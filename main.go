@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,9 +20,15 @@ type Page struct {
 	Enable bool               `json:"enable"`
 	Body   string             `json:"body"`
 	Title  string             `json:"title"`
+	//Category string             `json:"title"`
+	//Parent   primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 }
 
 var pages_collection *mongo.Collection
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
 
 func main() {
 	err := godotenv.Load(".env")
@@ -44,6 +52,10 @@ func main() {
 
 	/* Fiber backend server */
 	app := fiber.New()
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,PATCH,DELETE",
+	}))
 	app.Get("/api/pages", getPages)
 	app.Post("/api/pages", createPage)
 	app.Patch("/api/pages/:id", updatePage)

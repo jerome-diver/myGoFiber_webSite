@@ -11,3 +11,7 @@ Database used with Mongodb and his own mogodb go library.
 
 ## React.js & frontend side libraries used
 
+- Typescript
+- Babel transpiler
+- Chakra UI
+- react-icons
