@@ -1,7 +1,8 @@
 import { Stack, Container, Card, Table, Heading, Input, Fieldset, Show, Button, Text } from '@chakra-ui/react'
 import { Field } from "@/components/ui/field"
 import { DataListItem, DataListRoot } from "@/components/ui/data-list"
-import { FormEvent, Dispatch, SetStateAction, useEffect, useState } from 'react'
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dispatch, SetStateAction, useEffect, useState } from 'react'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { ObjectId, NilObjectID } from 'bson'
 
@@ -160,7 +161,10 @@ const FormPage = ( { page, edit, setEdit, setPage }:
       setValue("title", page.title)
       setValue("description", page.description)
       setValue("body", page.body)
-    } else { reset() }
+      setValue("enable", page.enable )
+    } else { 
+      reset()
+     }
   }, [edit])
   
   // SUBMIT After input as been validated by handleSubmit
@@ -170,6 +174,7 @@ const FormPage = ( { page, edit, setEdit, setPage }:
     switch(submitOrigin) {
     case "update":
       console.log("I'm going to update the page")
+      console.log(data)
       setPage(data)
       break;
     case "delete":
@@ -187,23 +192,22 @@ const FormPage = ( { page, edit, setEdit, setPage }:
         <Fieldset.Legend>{(edit) ? "Update Page" : "New Page"}</Fieldset.Legend>
         <Fieldset.HelperText>{(edit) ? "Update the " : "Create a new "} existing page</Fieldset.HelperText>
         <Fieldset.Content>
-          <Field label="title"><Input {...register("title", {
-                                                      required: 'This is required',
-                                                      minLength: { value: 5, 
-                                                                   message: 'Minimum length should be 4' }} )} 
-                                      id="title" 
-                                      placeholder="title" 
-                                      type="text"             /></Field>
+          <Field label="title"><Input {...register("title", 
+                                              { required: 'This is required',
+                                                minLength: { value: 5, 
+                                                             message: 'Minimum length should be 4' }} )} 
+                                      type="text"             />
+          </Field>
           <Field label="description">
             <Input {...register("description")}
-                   id="description" placeholder="description"
                    type="text" />
           </Field>
           <Field label="body">
             <Input {...register("body")}
-                   id="body" placeholder="body"
                    type="text" />
-            </Field>
+          </Field>
+          <Checkbox {...register("enable")} checked={(edit) ? page.enable : false}
+                    readOnly={false} >Enabled</Checkbox>
         </Fieldset.Content>
         <ActionOnPage edit={edit} setEdit={setEdit} />
       </Fieldset.Root>
