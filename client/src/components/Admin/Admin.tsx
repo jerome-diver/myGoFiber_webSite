@@ -1,7 +1,7 @@
-import { Accordion } from '@chakra-ui/react'
-import { AccordionItem, AccordionItemContent, AccordionItemTrigger, AccordionRoot } from "@/components/ui/accordion"
+import { Accordion, Container, Title } from '@mantine/core'
 import { ShowPages, FormPage, Page } from './Pages'
 import { useState, useEffect } from 'react'
+import classes from './Admin.module.css'
 
 const Admin = () => {
   const [editPage, setEditPage] = useState(false) // create or edit
@@ -12,24 +12,27 @@ const Admin = () => {
   }, [editPage, page]) 
 
   return (
-        <AccordionRoot multiple padding="10" gap="5">
-          <AccordionItem bg="#9b9890" value="showPages">
-            <Accordion.ItemTrigger bg="green" padding="5">
-              List Pages
-            </Accordion.ItemTrigger>
-            <Accordion.ItemContent padding="5">
-              <ShowPages editPage={setEditPage} setPage={setPage} />
-            </Accordion.ItemContent>
-          </AccordionItem>
-          <AccordionItem bg="#858080" value="createPages">
-            <AccordionItemTrigger bg="green" padding="5">
-              {(editPage) ? "Edit the " : "Creating a new "}page
-            </AccordionItemTrigger>
-            <AccordionItemContent padding="5">
-              <FormPage page={page} edit={editPage} setEdit={setEditPage} setPage={setPage}/>
-            </AccordionItemContent>
-          </AccordionItem>
-        </AccordionRoot>
+    <Container size="xl" className={classes.wrapper}>
+      <Title ta="center" className={classes.title}>
+        Admin Pages
+      </Title>
+      <Accordion variant="separated">
+        <Accordion.Item className={classes.item} value="showPages">
+          <Accordion.Control>List Pages</Accordion.Control>
+          <Accordion.Panel>
+            <ShowPages editPage={setEditPage} setPage={setPage} />
+          </Accordion.Panel>
+        </Accordion.Item>
+        <Accordion.Item variant="separated" value="createPages">
+          <Accordion.Control>
+            {(editPage) ? "Edit the " : "Creating a new "}page
+          </Accordion.Control>
+          <Accordion.Panel>
+            <FormPage page={page} edit={editPage} setEdit={setEditPage} setPage={setPage}/>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+    </Container>
   )
 }
 

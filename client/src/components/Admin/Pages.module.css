@@ -1,0 +1,53 @@
+.th {
+  padding: 0;
+}
+
+.control {
+  width: 100%;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+
+  @mixin hover {
+    background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  }
+}
+
+.icon {
+  width: 21px;
+  height: 21px;
+  border-radius: 21px;
+}
+
+.card {
+  border: 1px solid light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+}
+
+.cardTitle {
+  &::after {
+    content: '';
+    display: block;
+    background-color: var(--mantine-color-blue-filled);
+    width: 45px;
+    height: 2px;
+    margin-top: var(--mantine-spacing-sm);
+  }
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background-color: var(--mantine-color-body);
+  transition: box-shadow 150ms ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-3));
+  }
+}
+
+.scrolled {
+  box-shadow: var(--mantine-shadow-sm);
+}

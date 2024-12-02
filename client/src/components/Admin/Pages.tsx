@@ -1,12 +1,14 @@
-import { Stack, Container, Card, Table, Heading, Input, Fieldset, Show, Button, Text } from '@chakra-ui/react'
-import { Field } from "@/components/ui/field"
-import { DataListItem, DataListRoot } from "@/components/ui/data-list"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Container, Title, Anchor, Group, Button, Switch,
+         Center, ScrollArea, Table, Card, Stack, keys, Textarea,
+         Text, TextInput, UnstyledButton } from '@mantine/core'
+import { IconChevronDown, IconChevronUp, IconSearch, IconSelector } from '@tabler/icons-react'
 import { Dispatch, SetStateAction, useEffect, useState } from 'react'
 import { useForm, SubmitHandler } from 'react-hook-form'
-import { ObjectId, NilObjectID } from 'bson'
+import { ObjectId } from 'bson'
+import cx from 'clsx';
+import classes from './Pages.module.css'
 
-const url = 'http://localhost:4040/api/pages'
+const getPagesURL = 'http://localhost:4040/api/pages'
 interface Page {
   id: ObjectId
   title: string
@@ -17,62 +19,189 @@ interface Page {
   parent: ObjectId
 }
 
-const FetchPages = () => {
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [pages, setPages] = useState(new Map())
-
-  useEffect(() => {
-    let ignore = false
-    const fetchPages = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(url, {method: "GET", headers: { "Content-Type":"application/json"}})
-        if (ignore) { return }
-        const elements: Map<string,string> = await response.json()
-        setPages(elements)
-      } catch (e) {
-        setError(e.message)
-        setIsLoading(false)
-        console.log(e)
-      }
-      setIsLoading(false)
-    }
-    fetchPages()
-    return () => { ignore = true }
-  }, [])
-
-  if (isLoading) {
-    return [null, "Loading..."]
-  }
-  if (error != null) {
-    return [null, error]
-  }
-  return [pages, "Pages existing"]
+interface ThProps {
+  children: React.ReactNode
+  reversed: boolean
+  sorted: boolean
+  onSort: () => void
 }
 
-const convertNullObjectIdToString = (o: ObjectId | NilObjectID) => {
+const filterData = (data: Page[], search: string) => {
+  const query = search.toLowerCase().trim()
+  return data.filter((item) =>
+    keys(data[0]).some((key) => item[key].toString().toLowerCase().includes(query))
+  )
+}
+
+const sortData = ( data: Page[],
+                   payload: { sortBy: keyof Page | null; 
+                              reversed: boolean; 
+                              search: string } ) => {
+  const { sortBy } = payload
+
+  if (!sortBy) {
+    return filterData(data, payload.search)
+  }
+
+  return filterData(
+    [...data].sort((a, b) => {
+      if (payload.reversed) {
+        return b[sortBy].toString().localeCompare(a[sortBy].toString())
+      }
+      return a[sortBy].toString().localeCompare(b[sortBy].toString())
+    }),
+    payload.search
+  )
+}
+
+const convertNullObjectIdToString = (o: ObjectId) => {
   if (typeof o == "object") { return o.toString() }
   return "___"
 }
 
+const Th = ({ children, reversed, sorted, onSort }: ThProps) => {
+  const Icon = sorted ? (reversed ? IconChevronUp : IconChevronDown) : IconSelector;
+  return (
+    <Table.Th className={classes.th}>
+      <UnstyledButton onClick={onSort} className={classes.control}>
+        <Group justify="space-between">
+          <Text fw={500} fz="sm">
+            {children}
+          </Text>
+          <Center className={classes.icon}>
+            <Icon size={16} stroke={1.5} />
+          </Center>
+        </Group>
+      </UnstyledButton>
+    </Table.Th>
+  )
+}
 
-
-const ShowPages = (
-          { editPage, setPage }: 
-          { editPage: React.Dispatch<React.SetStateAction<boolean>>, 
-            setPage: React.Dispatch<React.SetStateAction<Page>> }) => {
-
-  let tableRender
-  const [cardPage, setCardPage] = useState({} as Page)
-  const [pages, heading] = FetchPages()
+const TableRowForPage = ({page, setCardPage }: {page: Page, setCardPage: Dispatch<SetStateAction<Page>>}) => {
 
   const handleRowClick = (e: React.MouseEvent, data: Page) => { 
     e.preventDefault()
     if (!data.description) { data.description = "empty" }
     setCardPage(data)
   }
+
+  console.info("row page:", page)
+
+  if (page.id) {
+    if (!page.category) { page.category = "___" }
+    return (
+      <Table.Tr key={page.id.toString()} onClick={((e) => handleRowClick(e, page))}>
+        <Table.Td>
+          <Anchor component="button" fz="sm">{page.id.toString()}</Anchor>
+          </Table.Td>
+        <Table.Td>{page.title}</Table.Td>
+        <Table.Td>{page.enable.toString()}</Table.Td>
+        <Table.Td>{page.category}</Table.Td>
+        <Table.Td>{convertNullObjectIdToString(page.parent)}</Table.Td>
+      </Table.Tr>
+    )
+  }
+}
+
+const ShowPages = (
+          { editPage, setPage }: 
+          { editPage: Dispatch<SetStateAction<boolean>>, 
+            setPage: Dispatch<SetStateAction<Page>> }) => {
+
+  const [cardPage, setCardPage] = useState({} as Page)
+  //const [pages, heading] = FetchPages()
+  const [search, setSearch] = useState('')
+  const [sortedPages, setSortedPages] = useState<Page[]>([])
+  const [sortBy, setSortBy] = useState<keyof Page | null>(null)
+  const [reverseSortDirection, setReverseSortDirection] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [pages, setPages] = useState<Page[]>([])
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const getPages = async () => {
+      setIsLoading(true)
+      setError("")
+      fetch(getPagesURL, {method: "GET"})
+        .then(response => response.json())
+        .then(data => {
+          setPages(data)
+          setIsLoading(false)
+          console.info("after to set pages is:", pages)
+        })
+        .catch(e => {
+          setError(e.message)
+          setIsLoading(false)
+        })
+    }
+    getPages()
+  }, [])
+
+  const setSorting = (field: keyof Page) => {
+    const reversed = field === sortBy ? !reverseSortDirection : false
+    setReverseSortDirection(reversed)
+    setSortBy(field)
+    setSortedPages(sortData(pages, { sortBy: field, reversed, search }))
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.currentTarget
+    setSearch(value)
+    setSortedPages(sortData(pages, { sortBy, reversed: reverseSortDirection, search: value }))
+  };
+
+  if (error == "") {
+    return (
+      <Container>
+        <Title>{(isLoading) ? "Loading..." : "Existing pages"}</Title>
+        <TextInput
+          placeholder="Search by any field"
+          mb="md"
+          leftSection={<IconSearch size={16} stroke={1.5} />}
+          value={search}
+          onChange={handleSearchChange}
+        />
+        <ScrollArea h={300} onScrollPositionChange={({y}) => setScrolled(y !== 0)} >
+          <Table horizontalSpacing="xl" verticalSpacing="md" miw={700}>
+            <Table.Caption>list of existing pages</Table.Caption>
+            <Table.Thead className={cx(classes.header, { [classes.scrolled]: scrolled })} >
+              <Table.Tr>
+                <Th sorted={sortBy === 'id'} 
+                    reversed={reverseSortDirection} 
+                    onSort={() => setSorting('id')}>ID</Th>
+                <Th sorted={sortBy === 'title'} 
+                    reversed={reverseSortDirection} 
+                    onSort={() => setSorting('title')}>Title</Th>
+                <Th sorted={sortBy === 'enable'}
+                    reversed={reverseSortDirection} 
+                    onSort={() => setSorting('enable')}>Enabled</Th>
+                <Th sorted={sortBy === 'category'} 
+                    reversed={reverseSortDirection} 
+                    onSort={() => setSorting('category')}>Category</Th>
+                <Th sorted={sortBy === 'parent'} 
+                    reversed={reverseSortDirection} 
+                    onSort={() => setSorting('id')}>Parent</Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              { (pages && pages.length != 0)
+                  ? sortedPages.map((page: Page) => <TableRowForPage page={page} setCardPage={setCardPage}/>)
+                  : <></> }
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+        <ShowPage page={cardPage} editPage={editPage} setPage={setPage} setCardPage={setCardPage} />
+      </Container>
+    )
+  } else { return <Container><Title>{error}</Title></Container>}
+}
+
+const ShowPage = ({ page, editPage, setPage, setCardPage }: 
+                  { page: Page,
+                    editPage: Dispatch<SetStateAction<boolean>>, 
+                    setPage: Dispatch<SetStateAction<Page>>,
+                    setCardPage: Dispatch<SetStateAction<Page>> }) => {
 
   const cardEditButton = (e: React.MouseEvent, data: Page) => {
     e.preventDefault()
@@ -86,65 +215,24 @@ const ShowPages = (
     setCardPage({} as Page)
   }
 
-  if (pages) {
-    tableRender = pages.map((page: Page) => {
-      if (!page.category) { page.category = "___" }
-      return (
-        <Table.Row key={page.id.toString()} _hover={{bg: "#158952"}} onClick={((e) => handleRowClick(e, page))}>
-          <Table.Cell>{page.id.toString()}</Table.Cell>
-          <Table.Cell>{page.title}</Table.Cell>
-          <Table.Cell>{page.enable.toString()}</Table.Cell>
-          <Table.Cell>{page.category}</Table.Cell>
-          <Table.Cell>{convertNullObjectIdToString(page.parent)}</Table.Cell>
-        </Table.Row>
-      )
-    })
-  } else { tableRender = <></>}
+  if (Object.keys(page).length != 0) {
+    return (
+          <Card withBorder radius="md" shadow="md" className={classes.card} padding="md">
+            <Card.Section>
+              <Text>Show selected page</Text>
+              <Text id="Title">{page.title}</Text>
+              <Text id="Enabled">{page.enable.toString()}</Text>
+              <Text id="Description">{page.description}</Text>
+              <Text id="Body">{page.body}</Text>
+            </Card.Section>
+            <Card.Section>
+              <Button onClick={ ((e) => { cardEditButton(e, page) }) } color="teal" >Edit</Button> 
+              <Button onClick={ ((e) => { cardCancelButton(e) }) } color="black">Cancel</Button>
+            </Card.Section>
+          </Card>
+    )
+  } else { return <Text>Select an existing page</Text> }
 
-  return (
-    <Container>
-      <Heading>{heading}</Heading>
-      <Table.Root size="lg" variant="outline" interactive rounded="md">
-        <Table.ColumnGroup>
-          <Table.Column htmlWidth="35%" />
-          <Table.Column htmlWidth="20%" />
-          <Table.Column htmlWidth="5%"  />
-          <Table.Column htmlWidth="10%" />
-          <Table.Column htmlWidth="30%" />
-        </Table.ColumnGroup>
-        <Table.Header bg="gray">
-          <Table.Row fontWeight="bold">
-            <Table.ColumnHeader>ID</Table.ColumnHeader>
-            <Table.ColumnHeader>Title</Table.ColumnHeader>
-            <Table.ColumnHeader>Enabled</Table.ColumnHeader>
-            <Table.ColumnHeader>Category</Table.ColumnHeader>
-            <Table.ColumnHeader>Parent</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body bg="#aaaaaa">
-          { tableRender }
-        </Table.Body>
-        <Table.Caption>list of existing pages</Table.Caption>
-      </Table.Root>
-      <Show when={(Object.keys(cardPage).length != 0)} fallback={<Text>Select an existing page</Text>}>
-        <Card.Root bg="gray">
-          <Card.Header>
-            <Card.Title>Show selected page</Card.Title>
-            <DataListRoot orientation="horizontal">
-              <DataListItem label="Title" value={(Object.keys(cardPage).length != 0) ? cardPage.title : ""} />
-              <DataListItem label="Enabled" value={(Object.keys(cardPage).length != 0) ? cardPage.enable.toString() : ""} />
-            </DataListRoot>
-            <Card.Description>{(cardPage) ? cardPage.description : ""}</Card.Description>
-          </Card.Header>
-          <Card.Body gap="2">{(cardPage) ? cardPage.body : ""}</Card.Body>
-          <Card.Footer gap="2">
-            <Button onClick={ ((e) => { cardEditButton(e, cardPage) }) }>Edit</Button>
-            <Button onClick={ ((e) => { cardCancelButton(e) }) }>Cancel</Button>
-          </Card.Footer>
-        </Card.Root>
-      </Show>
-    </Container>
-  )
 }
 
 const FormPage = ( { page, edit, setEdit, setPage }: 
@@ -188,46 +276,41 @@ const FormPage = ( { page, edit, setEdit, setPage }:
 
   return (
     <form  onSubmit={handleSubmit(submitPage)} id="formSub">
-      <Fieldset.Root>
-        <Fieldset.Legend>{(edit) ? "Update Page" : "New Page"}</Fieldset.Legend>
-        <Fieldset.HelperText>{(edit) ? "Update the " : "Create a new "} existing page</Fieldset.HelperText>
-        <Fieldset.Content>
-          <Field label="title"><Input {...register("title", 
-                                              { required: 'This is required',
-                                                minLength: { value: 5, 
-                                                             message: 'Minimum length should be 4' }} )} 
-                                      type="text"             />
-          </Field>
-          <Field label="description">
-            <Input {...register("description")}
-                   type="text" />
-          </Field>
-          <Field label="body">
-            <Input {...register("body")}
-                   type="text" />
-          </Field>
-          <Checkbox {...register("enable")} checked={(edit) ? page.enable : false}
-                    readOnly={false} >Enabled</Checkbox>
-        </Fieldset.Content>
+      <Container>
+        <Title>{(edit) ? "Update Page" : "New Page"}</Title>
+        <Text>{(edit) ? "Update the " : "Create a new "} existing page</Text>
+        <Stack>
+          <TextInput {...register("title", 
+                                  { required: 'This is required',
+                                    minLength: { value: 5, 
+                                                 message: 'Minimum length should be 4' }} )} 
+                     label="Title" />
+          <TextInput {...register("description")}
+                     label="Description" />
+          <Textarea {...register("body")}
+                     label="Body" required />
+          <Switch {...register("enable")} checked={(edit) ? page.enable : false}
+                  onLabel="Enabled" offLabel="Disabled" />
+        </Stack>
         <ActionOnPage edit={edit} setEdit={setEdit} />
-      </Fieldset.Root>
+      </Container>
     </form>
   )
 }
 
 const ActionOnPage = ({ edit, setEdit }: { edit: boolean, setEdit: Dispatch<SetStateAction<boolean>>}) => {
 
-  const cancelButton = (e) => {
+  const cancelButton = () => {
     setEdit(false)
   }
 
   if (edit) {
     return (
       <>
-      <Stack direction="row">
-        <Button type="submit" name="update">Update</Button>
-        <Button type="submit" name="delete">Delete</Button>
-        <Button onClick={cancelButton}>Cancel</Button>
+      <Stack color="asphalt">
+        <Button type="submit" name="update" color="teal">Update</Button>
+        <Button type="submit" name="delete" color="red">Delete</Button>
+        <Button onClick={cancelButton} color="black">Cancel</Button>
       </Stack>
       </>
     )
