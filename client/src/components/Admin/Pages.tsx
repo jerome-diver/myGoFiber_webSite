@@ -1,21 +1,21 @@
-import { Container, Title, Anchor, Group, Button, Switch,
+import { Container, Title, Anchor, Group, Button, Switch, Select,
          Center, ScrollArea, Table, Card, Stack, keys, Textarea,
          Text, TextInput, UnstyledButton } from '@mantine/core'
-import { IconChevronDown, IconChevronUp, IconSearch, IconSelector } from '@tabler/icons-react'
-import { Dispatch, SetStateAction, useEffect, useState } from 'react'
+import { IconChevronDown, IconChevronUp, IconSearch, IconSelector, IconProps, Icon,
+         IconArticleFilled, IconQuestionMark, IconBrandPagekit, IconBadgeAdFilled } from '@tabler/icons-react'
+import { Dispatch, ForwardRefExoticComponent, RefAttributes, SetStateAction, useEffect, useState } from 'react'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { ObjectId } from 'bson'
 import cx from 'clsx';
 import classes from './Pages.module.css'
 
-const getPagesURL = 'http://localhost:4040/api/pages'
 interface Page {
   id: ObjectId
   title: string
   description: string
-  category: string
   body: string
   enable: boolean
+  category: string
   parent: ObjectId
 }
 
@@ -104,38 +104,21 @@ const TableRowForPage = ({page, setCardPage }: {page: Page, setCardPage: Dispatc
 }
 
 const ShowPages = (
-          { editPage, setPage }: 
+          { editPage, setPage, pages, error, isLoading }: 
           { editPage: Dispatch<SetStateAction<boolean>>, 
-            setPage: Dispatch<SetStateAction<Page>> }) => {
+            setPage: Dispatch<SetStateAction<Page>>,
+            pages: Page[],
+            error: string,
+            isLoading: boolean }) => {
 
   const [cardPage, setCardPage] = useState({} as Page)
-  //const [pages, heading] = FetchPages()
   const [search, setSearch] = useState('')
   const [sortedPages, setSortedPages] = useState<Page[]>([])
   const [sortBy, setSortBy] = useState<keyof Page | null>(null)
   const [reverseSortDirection, setReverseSortDirection] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [pages, setPages] = useState<Page[]>([])
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const getPages = async () => {
-      setIsLoading(true)
-      setError("")
-      fetch(getPagesURL, {method: "GET"})
-        .then(response => response.json())
-        .then(data => {
-          setPages(data)
-          setIsLoading(false)
-          console.info("after to set pages is:", pages)
-        })
-        .catch(e => {
-          setError(e.message)
-          setIsLoading(false)
-        })
-    }
-    getPages()
   }, [])
 
   const setSorting = (field: keyof Page) => {
@@ -235,11 +218,16 @@ const ShowPage = ({ page, editPage, setPage, setCardPage }:
 
 }
 
-const FormPage = ( { page, edit, setEdit, setPage }: 
+const FormPage = ( { page, edit, setEdit, setPage, pages }: 
                    { page: Page, 
                      edit: boolean, 
                      setEdit: Dispatch<SetStateAction<boolean>>,
-                     setPage: Dispatch<SetStateAction<Page>>} ) => {
+                     setPage: Dispatch<SetStateAction<Page>>,
+                     pages: Page[]} ) => {
+  type Category = {
+    label: string;
+    image: ForwardRefExoticComponent<IconProps & RefAttributes<Icon>>;
+  }
 
   const { register, handleSubmit, reset, setValue } = useForm<Page>({ defaultValues: {} })
 
@@ -250,6 +238,8 @@ const FormPage = ( { page, edit, setEdit, setPage }:
       setValue("description", page.description)
       setValue("body", page.body)
       setValue("enable", page.enable )
+      setValue("category", page.category)
+      setValue("parent", page.parent)
     } else { 
       reset()
      }
@@ -274,23 +264,61 @@ const FormPage = ( { page, edit, setEdit, setPage }:
     }
   }
 
+  const otherExistPages = (actualPage: Page): string[] => {
+    const removePage = (value: Page, index: number, all: Page[]) => {
+      if (value == actualPage) { 
+        all.splice(index, 1)
+        return true
+      }
+      return false
+    }
+    console.info("All existing pages are:", pages)
+    //const otherAnswer = pages.filter(removePage)
+    //console.info("Other existing pages are:", otherAnswer)
+    const answer = pages.map((page) => { return page.id.toString() })
+    console.info("other parents id existing are:", answer)
+    return answer
+  }
+  const listOtherPages = otherExistPages(page)
+
+  const categories: Category[] = [
+    { label: "Article", image: <IconArticleFilled/> },
+    { label: "Page", image: <IconBrandPagekit/> },
+    { label: "Advertisement", image: <IconBadgeAdFilled/> },
+    { label: "Other", image: <IconQuestionMark/> },
+  ]
+
+  const category_labels = categories.map((category) => {
+    return category.label
+  })
+
   return (
     <form  onSubmit={handleSubmit(submitPage)} id="formSub">
       <Container>
         <Title>{(edit) ? "Update Page" : "New Page"}</Title>
         <Text>{(edit) ? "Update the " : "Create a new "} existing page</Text>
-        <Stack>
+        <Stack className={classes.formcontent} >
           <TextInput {...register("title", 
                                   { required: 'This is required',
                                     minLength: { value: 5, 
                                                  message: 'Minimum length should be 4' }} )} 
-                     label="Title" />
+                     label="Title" required/>
           <TextInput {...register("description")}
                      label="Description" />
           <Textarea {...register("body")}
                      label="Body" required />
-          <Switch {...register("enable")} checked={(edit) ? page.enable : false}
+          <Switch {...register("enable")} 
                   onLabel="Enabled" offLabel="Disabled" />
+          <Select mt="md"  comboboxProps={{ withinPortal: true }}
+                  {...register("category")}
+                  data={category_labels}
+                  placeholder="Pick one"
+                  label="Category" />
+          <Select mt="md"  comboboxProps={{ withinPortal: true }}
+                  {...register("parent")}
+                  data={listOtherPages}
+                  placeholder="Pick one"
+                  label="Parent" />
         </Stack>
         <ActionOnPage edit={edit} setEdit={setEdit} />
       </Container>

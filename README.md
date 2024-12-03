@@ -15,7 +15,8 @@ Database used by Mongodb and his own mongodb go library.
 - Typescript
 - React.js
 - Babel transpiler
-- Chakra UI
+- Mantine UI
+- tabler/icons-react
 - react-icons
 - react-hook-form
 - wouter
