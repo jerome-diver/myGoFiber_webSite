@@ -13,22 +13,21 @@ const Admin = () => {
   const [error, setError] = useState("")
 
   useEffect(()=>{
-    const getPages = async () => {
-      setIsLoading(true)
-      setError("")
-      fetch(getPagesURL, {method: "GET"})
-        .then(response => response.json())
-        .then(data => {
-          setPages(data)
-          setIsLoading(false)
-          console.info("after to set pages is:", pages)
-        })
-        .catch(e => {
-          setError(e.message)
-          setIsLoading(false)
-        })
-    }
-    getPages()
+  const controller = new AbortController()
+  setIsLoading(true)
+  setError("")
+  fetch(getPagesURL, {method: "GET"})
+    .then(response => response.json())
+    .then(data => {
+      setPages(data)
+      setIsLoading(false)
+      console.info("after to set pages is:", pages)
+      })
+    .catch(e => {
+      setError(e.message)
+      setIsLoading(false)
+      })
+    return () => { controller.abort() }
   }, []) 
 
   useEffect(() => {}, [page, editPage])

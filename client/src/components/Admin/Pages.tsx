@@ -103,6 +103,23 @@ const TableRowForPage = ({page, setCardPage }: {page: Page, setCardPage: Dispatc
   }
 }
 
+const TableRows = (
+      { pages, sortedPages, setCardPage}: 
+      { pages:Page[], 
+        sortedPages: Page[], 
+        setCardPage: Dispatch<SetStateAction<Page>>}) => {
+  useEffect(() => {
+    console.info("print pages:", pages)
+  }, [pages])
+
+  if (pages && pages.length != 0) {
+    return sortedPages.map((page: Page) => <TableRowForPage key={page.id.toString()} 
+                                                            page={page} 
+                                                            setCardPage={setCardPage}/>)
+  } else {
+    return <></>
+  }
+}
 const ShowPages = (
           { editPage, setPage, pages, error, isLoading }: 
           { editPage: Dispatch<SetStateAction<boolean>>, 
@@ -168,9 +185,7 @@ const ShowPages = (
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              { (pages && pages.length != 0)
-                  ? sortedPages.map((page: Page) => <TableRowForPage page={page} setCardPage={setCardPage}/>)
-                  : <></> }
+              <TableRows pages={pages} sortedPages={sortedPages} setCardPage={setCardPage} />
             </Table.Tbody>
           </Table>
         </ScrollArea>
@@ -200,22 +215,21 @@ const ShowPage = ({ page, editPage, setPage, setCardPage }:
 
   if (Object.keys(page).length != 0) {
     return (
-          <Card withBorder radius="md" shadow="md" className={classes.card} padding="md">
-            <Card.Section>
-              <Text>Show selected page</Text>
-              <Text id="Title">{page.title}</Text>
-              <Text id="Enabled">{page.enable.toString()}</Text>
-              <Text id="Description">{page.description}</Text>
-              <Text id="Body">{page.body}</Text>
-            </Card.Section>
-            <Card.Section>
-              <Button onClick={ ((e) => { cardEditButton(e, page) }) } color="teal" >Edit</Button> 
-              <Button onClick={ ((e) => { cardCancelButton(e) }) } color="black">Cancel</Button>
-            </Card.Section>
-          </Card>
+      <Card withBorder radius="md" shadow="md" className={classes.card} padding="md">
+        <Card.Section>
+          <Text>Show selected page</Text>
+          <Text id="Title">{page.title}</Text>
+          <Text id="Enabled">{page.enable.toString()}</Text>
+          <Text id="Description">{page.description}</Text>
+          <Text id="Body">{page.body}</Text>
+        </Card.Section>
+        <Card.Section>
+          <Button onClick={ ((e) => { cardEditButton(e, page) }) } color="teal" >Edit</Button> 
+          <Button onClick={ ((e) => { cardCancelButton(e) }) } color="black">Cancel</Button>
+        </Card.Section>
+      </Card>
     )
   } else { return <Text>Select an existing page</Text> }
-
 }
 
 const FormPage = ( { page, edit, setEdit, setPage, pages }: 
@@ -265,13 +279,13 @@ const FormPage = ( { page, edit, setEdit, setPage, pages }:
   }
 
   const otherExistPages = (actualPage: Page): string[] => {
-    const removePage = (value: Page, index: number, all: Page[]) => {
-      if (value == actualPage) { 
-        all.splice(index, 1)
-        return true
-      }
-      return false
-    }
+    // const removePage = (value: Page, index: number, all: Page[]) => {
+    //   if (value == actualPage) { 
+    //     all.splice(index, 1)
+    //     return true
+    //   }
+    //   return false
+    // }
     console.info("All existing pages are:", pages)
     //const otherAnswer = pages.filter(removePage)
     //console.info("Other existing pages are:", otherAnswer)

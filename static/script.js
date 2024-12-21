@@ -1,0 +1,1 @@
+console.info("i'm from static script.js file backend side")
